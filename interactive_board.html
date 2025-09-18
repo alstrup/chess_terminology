@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Chess Position Editor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+        }
+        .board-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .board {
+            width: 480px;
+            height: 480px;
+            margin: 0 auto;
+            border: 2px solid #333;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            position: relative;
+        }
+        .square {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+        }
+        .square.light {
+            background-color: #f0d9b5;
+        }
+        .square.dark {
+            background-color: #b58863;
+        }
+        .square.highlight {
+            background-color: #ffff00 !important;
+            box-shadow: inset 0 0 0 3px #ff0000;
+        }
+        .square.possible-move {
+            background-color: #90EE90 !important;
+        }
+        .piece {
+            cursor: grab;
+            transition: transform 0.1s;
+        }
+        .piece:hover {
+            transform: scale(1.1);
+        }
+        .piece.dragging {
+            cursor: grabbing;
+            opacity: 0.7;
+            z-index: 1000;
+        }
+        .piece.white {
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        .piece.black {
+            color: #333333;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.3);
+        }
+        .square-label {
+            position: absolute;
+            font-size: 12px;
+            font-weight: normal;
+            color: #666;
+        }
+        .square-label.file {
+            bottom: 2px;
+            right: 2px;
+        }
+        .square-label.rank {
+            top: 2px;
+            left: 2px;
+        }
+        .piece-palette {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .palette-piece {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            background: #f0d9b5;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            cursor: grab;
+            transition: transform 0.1s;
+        }
+        .palette-piece:hover {
+            transform: scale(1.1);
+            border-color: #007bff;
+        }
+        .palette-piece.white {
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        .palette-piece.black {
+            color: #333333;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.3);
+        }
+        .fen-display {
+            background: #f1f1f1;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .controls button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .controls button:hover {
+            background: #0056b3;
+        }
+        .controls button.secondary {
+            background: #6c757d;
+        }
+        .controls button.secondary:hover {
+            background: #545b62;
+        }
+        .controls h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .turn-selector {
+            margin: 15px 0;
+        }
+        .turn-selector label {
+            margin-right: 15px;
+        }
+        .validation-command {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interactive Chess Position Editor</h1>
+
+    <div class="container">
+        <div class="board-container">
+            <h2>Board</h2>
+            <div id="board" class="board"></div>
+        </div>
+
+        <div class="controls">
+            <h3>Piece Palette</h3>
+            <div class="piece-palette" id="palette">
+                <div class="palette-piece white" data-piece="K" draggable="true">♔</div>
+                <div class="palette-piece white" data-piece="Q" draggable="true">♕</div>
+                <div class="palette-piece white" data-piece="R" draggable="true">♖</div>
+                <div class="palette-piece white" data-piece="B" draggable="true">♗</div>
+                <div class="palette-piece white" data-piece="N" draggable="true">♘</div>
+                <div class="palette-piece white" data-piece="P" draggable="true">♙</div>
+                <div class="palette-piece black" data-piece="k" draggable="true">♚</div>
+                <div class="palette-piece black" data-piece="q" draggable="true">♛</div>
+                <div class="palette-piece black" data-piece="r" draggable="true">♜</div>
+                <div class="palette-piece black" data-piece="b" draggable="true">♝</div>
+                <div class="palette-piece black" data-piece="n" draggable="true">♞</div>
+                <div class="palette-piece black" data-piece="p" draggable="true">♟</div>
+            </div>
+
+            <h3>Position Controls</h3>
+            <button onclick="clearBoard()">Clear Board</button>
+            <button onclick="setStartingPosition()">Starting Position</button>
+            <button onclick="flipBoard()" class="secondary">Flip Board</button>
+
+            <h3>Load from FEN</h3>
+            <input type="text" id="fen-input" placeholder="Paste FEN string here..." style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 12px;">
+            <button onclick="loadFromFEN()">Load Position</button>
+
+            <div class="turn-selector">
+                <label><input type="radio" name="turn" value="w" checked> White to move</label>
+                <label><input type="radio" name="turn" value="b"> Black to move</label>
+            </div>
+
+            <h3>FEN Export</h3>
+            <div class="fen-display" id="fen-output">rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1</div>
+            <button onclick="copyFEN()">Copy FEN</button>
+            <button onclick="copyMarkdownBoard()">Copy Markdown Board</button>
+            <button onclick="validatePosition()" class="secondary">Validate Position</button>
+
+            <h3>Markdown Board Format</h3>
+            <div class="fen-display" id="markdown-output">
+**Example Position:**<br>
+![Position Name](https://lichess1.org/export/fen.gif?fen=rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR&color=white&theme=brown&piece=cburnett)<br><br>
+FEN: `rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1`<br>
+*Description of the position goes here.*
+            </div>
+
+            <h3>Validation Command</h3>
+            <div class="validation-command" id="validation-command">
+                python3 validate_position.py "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" FORK_SPECS.md
+            </div>
+
+            <h3>Instructions</h3>
+            <ul>
+                <li>Drag pieces from palette to board</li>
+                <li>Drag pieces on board to move them</li>
+                <li>Click on a piece to remove it</li>
+                <li>Right-click on empty square to clear it</li>
+                <li>Copy FEN and use validation command</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Piece symbols mapping
+        const pieceSymbols = {
+            'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
+            'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'
+        };
+
+        let board = [];
+        let flipped = false;
+        let draggedPiece = null;
+        let draggedFrom = null;
+
+        // Initialize empty board
+        function initializeBoard() {
+            board = Array(8).fill(null).map(() => Array(8).fill(''));
+            createBoardHTML();
+            setStartingPosition();
+        }
+
+        function createBoardHTML() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+
+            for (let rank = 0; rank < 8; rank++) {
+                for (let file = 0; file < 8; file++) {
+                    const square = document.createElement('div');
+                    const actualRank = flipped ? rank : 7 - rank;
+                    const actualFile = flipped ? 7 - file : file;
+
+                    square.className = `square ${(rank + file) % 2 === 0 ? 'light' : 'dark'}`;
+                    square.dataset.rank = actualRank;
+                    square.dataset.file = actualFile;
+
+                    // Add coordinates
+                    if (file === 0) {
+                        const rankLabel = document.createElement('span');
+                        rankLabel.className = 'square-label rank';
+                        rankLabel.textContent = actualRank + 1;
+                        square.appendChild(rankLabel);
+                    }
+                    if (rank === 7) {
+                        const fileLabel = document.createElement('span');
+                        fileLabel.className = 'square-label file';
+                        fileLabel.textContent = String.fromCharCode(97 + actualFile);
+                        square.appendChild(fileLabel);
+                    }
+
+                    // Add event listeners
+                    square.addEventListener('dragover', handleDragOver);
+                    square.addEventListener('drop', handleDrop);
+                    square.addEventListener('click', handleSquareClick);
+                    square.addEventListener('contextmenu', handleRightClick);
+
+                    boardElement.appendChild(square);
+                }
+            }
+            updateBoardDisplay();
+        }
+
+        function updateBoardDisplay() {
+            const squares = document.querySelectorAll('.square');
+            squares.forEach(square => {
+                const rank = parseInt(square.dataset.rank);
+                const file = parseInt(square.dataset.file);
+                const piece = board[rank][file];
+
+                // Remove existing piece
+                const existingPiece = square.querySelector('.piece');
+                if (existingPiece) {
+                    existingPiece.remove();
+                }
+
+                // Add piece if exists
+                if (piece) {
+                    const pieceElement = document.createElement('div');
+                    const colorClass = piece === piece.toUpperCase() ? 'white' : 'black';
+                    pieceElement.className = `piece ${colorClass}`;
+                    pieceElement.textContent = pieceSymbols[piece];
+                    pieceElement.dataset.piece = piece;
+                    pieceElement.draggable = true;
+
+                    pieceElement.addEventListener('dragstart', handleDragStart);
+                    pieceElement.addEventListener('dragend', handleDragEnd);
+
+                    square.appendChild(pieceElement);
+                }
+            });
+            updateFEN();
+        }
+
+        function setStartingPosition() {
+            const startingPosition = [
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', ''],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r']
+            ];
+            board = startingPosition.map(row => [...row]);
+            updateBoardDisplay();
+        }
+
+        function clearBoard() {
+            board = Array(8).fill(null).map(() => Array(8).fill(''));
+            updateBoardDisplay();
+        }
+
+        function flipBoard() {
+            flipped = !flipped;
+            createBoardHTML();
+        }
+
+        function loadFromFEN() {
+            const fenInput = document.getElementById('fen-input');
+            const fen = fenInput.value.trim();
+
+            if (!fen) {
+                alert('Please enter a FEN string');
+                return;
+            }
+
+            try {
+                const parts = fen.split(' ');
+                const position = parts[0];
+                const turn = parts[1] || 'w';
+
+                // Clear the board
+                board = Array(8).fill(null).map(() => Array(8).fill(''));
+
+                // Parse the position part
+                const ranks = position.split('/');
+
+                if (ranks.length !== 8) {
+                    throw new Error('Invalid FEN: must have 8 ranks');
+                }
+
+                for (let rank = 0; rank < 8; rank++) {
+                    const rankStr = ranks[rank];
+                    let file = 0;
+
+                    for (let i = 0; i < rankStr.length; i++) {
+                        const char = rankStr[i];
+
+                        if (char >= '1' && char <= '8') {
+                            // Empty squares
+                            const emptySquares = parseInt(char);
+                            file += emptySquares;
+                        } else if ('KQRBNPkqrbnp'.includes(char)) {
+                            // Piece
+                            if (file >= 8) {
+                                throw new Error('Invalid FEN: too many pieces in rank');
+                            }
+                            board[7 - rank][file] = char; // FEN ranks are from top to bottom
+                            file++;
+                        } else {
+                            throw new Error(`Invalid FEN: unknown character '${char}'`);
+                        }
+                    }
+
+                    if (file !== 8) {
+                        throw new Error(`Invalid FEN: rank ${rank + 1} has wrong number of squares`);
+                    }
+                }
+
+                // Set the turn
+                const turnRadio = document.querySelector(`input[name="turn"][value="${turn}"]`);
+                if (turnRadio) {
+                    turnRadio.checked = true;
+                }
+
+                // Update the display
+                updateBoardDisplay();
+
+                // Clear the input
+                fenInput.value = '';
+
+            } catch (error) {
+                alert(`Error loading FEN: ${error.message}`);
+            }
+        }
+
+        // Drag and drop handlers
+        function handleDragStart(e) {
+            draggedPiece = e.target.dataset.piece;
+            const square = e.target.parentElement;
+            draggedFrom = {
+                rank: parseInt(square.dataset.rank),
+                file: parseInt(square.dataset.file)
+            };
+            e.target.classList.add('dragging');
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            draggedPiece = null;
+            draggedFrom = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const rank = parseInt(e.currentTarget.dataset.rank);
+            const file = parseInt(e.currentTarget.dataset.file);
+
+            if (draggedPiece) {
+                // Clear original position if moving from board
+                if (draggedFrom) {
+                    board[draggedFrom.rank][draggedFrom.file] = '';
+                }
+
+                // Place piece at new position
+                board[rank][file] = draggedPiece;
+                updateBoardDisplay();
+            }
+        }
+
+        function handleSquareClick(e) {
+            const piece = e.currentTarget.querySelector('.piece');
+            if (piece) {
+                // Remove piece
+                const rank = parseInt(e.currentTarget.dataset.rank);
+                const file = parseInt(e.currentTarget.dataset.file);
+                board[rank][file] = '';
+                updateBoardDisplay();
+            }
+        }
+
+        function handleRightClick(e) {
+            e.preventDefault();
+            const rank = parseInt(e.currentTarget.dataset.rank);
+            const file = parseInt(e.currentTarget.dataset.file);
+            board[rank][file] = '';
+            updateBoardDisplay();
+        }
+
+        // Palette drag handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            const paletteSpaces = document.querySelectorAll('.palette-piece');
+            paletteSpaces.forEach(piece => {
+                piece.draggable = true;
+                piece.addEventListener('dragstart', function(e) {
+                    draggedPiece = e.target.dataset.piece;
+                    draggedFrom = null;
+                    console.log('Dragging from palette:', draggedPiece);
+                });
+                piece.addEventListener('dragend', function(e) {
+                    console.log('Drag ended');
+                });
+            });
+        });
+
+        function updateFEN() {
+            let fen = '';
+
+            // Board position
+            for (let rank = 7; rank >= 0; rank--) {
+                let emptyCount = 0;
+                let rankStr = '';
+
+                for (let file = 0; file < 8; file++) {
+                    const piece = board[rank][file];
+                    if (piece === '') {
+                        emptyCount++;
+                    } else {
+                        if (emptyCount > 0) {
+                            rankStr += emptyCount;
+                            emptyCount = 0;
+                        }
+                        rankStr += piece;
+                    }
+                }
+
+                if (emptyCount > 0) {
+                    rankStr += emptyCount;
+                }
+
+                fen += rankStr;
+                if (rank > 0) fen += '/';
+            }
+
+            // Active color
+            const turn = document.querySelector('input[name="turn"]:checked').value;
+            fen += ` ${turn}`;
+
+            // Castling rights (simplified - always KQkq for now)
+            fen += ' KQkq';
+
+            // En passant (always - for now)
+            fen += ' -';
+
+            // Halfmove and fullmove clocks
+            fen += ' 0 1';
+
+            document.getElementById('fen-output').textContent = fen;
+            document.getElementById('validation-command').textContent =
+                `python3 validate_position.py "${fen}" FORK_SPECS.md`;
+
+            // Update markdown board format
+            const fenForUrl = fen.split(' ')[0]; // Just the position part for URL
+            const markdownBoard = `**Example Position:**
+![Position Name](https://lichess1.org/export/fen.gif?fen=${fenForUrl}&color=white&theme=brown&piece=cburnett)
+
+FEN: \`${fen}\`
+*Description of the position goes here.*`;
+
+            document.getElementById('markdown-output').innerHTML = markdownBoard.replace(/\n/g, '<br>');
+        }
+
+        function copyFEN() {
+            const fenText = document.getElementById('fen-output').textContent;
+            navigator.clipboard.writeText(fenText).then(() => {
+                alert('FEN copied to clipboard!');
+            });
+        }
+
+        function copyMarkdownBoard() {
+            const fen = document.getElementById('fen-output').textContent;
+            const fenForUrl = fen.split(' ')[0]; // Just the position part for URL
+            const markdownBoard = `**Example Position:**
+![Position Name](https://lichess1.org/export/fen.gif?fen=${fenForUrl}&color=white&theme=brown&piece=cburnett)
+
+FEN: \`${fen}\`
+*Description of the position goes here.*`;
+
+            navigator.clipboard.writeText(markdownBoard).then(() => {
+                alert('Markdown board format copied to clipboard!');
+            });
+        }
+
+        function validatePosition() {
+            const fenText = document.getElementById('fen-output').textContent;
+            const command = `python3 validate_position.py "${fenText}" FORK_SPECS.md`;
+
+            alert(`Run this command in your terminal:\n\n${command}`);
+        }
+
+        // Initialize the board
+        initializeBoard();
+    </script>
+</body>
+</html>

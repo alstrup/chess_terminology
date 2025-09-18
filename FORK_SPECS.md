@@ -10,12 +10,24 @@
 - Forking piece safety: Must be safe from capture or adequately defended
 - Defensive resources: None effective (king must respond to check first)
 
+**Example Position:**
+![Check-and-Capture Fork](https://lichess1.org/export/fen.gif?fen=8/8/8/8/8/5r2/6N1/4K2k&color=white&theme=brown&piece=cburnett)
+
+FEN: `8/8/8/8/8/5r2/6N1/4K2k w - - 0 1`
+*White knight on g2 checks the black king and attacks the undefended rook on f3.*
+
 ### Double Hanging Fork
 **Conditions:**
 - Attacking piece: Any piece
 - Targets: Two or more undefended enemy pieces
 - Forking piece safety: Must be safe from capture
 - Defensive resources: Only one piece can move per turn; at most one target can be saved
+
+**Example Position:**
+![Double Hanging Fork](https://lichess1.org/export/fen.gif?fen=8/8/2r5/8/8/2B5/8/K1k5&color=white&theme=brown&piece=cburnett)
+
+FEN: `8/8/2r5/8/8/2B5/8/K1k5 w - - 0 1`
+*White bishop on c3 attacks two undefended pieces: the rook on c6 and king on c1.*
 
 ### Triple Fork
 **Conditions:**
@@ -43,6 +55,12 @@
 - Queen defense: Irrelevant (king must move from check)
 - Forking piece safety: Must be safe from capture
 - Defensive resources: Blocking check while defending queen (rare)
+
+**Example Position:**
+![Royal Fork](https://lichess1.org/export/fen.gif?fen=8/2q5/8/3N4/8/8/8/4Kk2&color=white&theme=brown&piece=cburnett)
+
+FEN: `8/2q5/8/3N4/8/8/8/4Kk2 w - - 0 1`
+*White knight on d5 checks the black king on f1 and attacks the queen on c7.*
 
 ### Grand Fork
 **Conditions:**
